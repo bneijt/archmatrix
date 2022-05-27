@@ -1,7 +1,6 @@
 use simple_error::SimpleError;
 
 use octocrab;
-use std::error::Error;
 
 pub async fn latest_with_prefix(prefix: &String) -> Result<String, Box<SimpleError>> {
     // TODO determine latest pyenv version online
@@ -14,20 +13,25 @@ pub async fn latest_with_prefix(prefix: &String) -> Result<String, Box<SimpleErr
         .path("plugins/python-build/share/python-build")
         .r#ref("master")
         .send()
-        .await.map_err(|_| Box::new(SimpleError::new(format!(
-            "Failed to contact github"
-        ))))?;
+        .await
+        .map_err(|_| Box::new(SimpleError::new(format!("Failed to contact github"))))?;
     let mut versions: Vec<String> = content_items
         .items
         .iter()
-        .map(|content| content.path.clone())
-        .filter(|path| path.starts_with(prefix))
+        .map(|content| content.name.clone())
+        .filter(|version| version.starts_with(prefix))
+        .filter(|version| !version.contains('-'))
         .collect();
-    versions.sort();
-    let version: String = versions.get(0).ok_or_else(|| {
-        Box::new(SimpleError::new(format!(
-            "Failed to find version for {prefix}"
-        )))
-    })?.clone();
+    // println!("{:?}", content_items.items);
+    println!("{:?}", versions);
+    versions.sort();//|a, b| a.split(".").map(|z|z.parse::<i32>().unwrap()) );
+    let version: String = versions
+        .get(0)
+        .ok_or_else(|| {
+            Box::new(SimpleError::new(format!(
+                "Failed to find version for {prefix}"
+            )))
+        })?
+        .clone();
     Ok(version)
 }

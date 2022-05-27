@@ -1,7 +1,7 @@
 use indoc::indoc;
 use std::fs;
-use simple_error::SimpleError;
 mod pyenv;
+use simple_error::SimpleError;
 use clap::Parser;
 
 /// Simple program to greet a person
@@ -27,7 +27,7 @@ async fn main() -> Result<(), Box<SimpleError>> {
         // by parsing https://api.github.com/repos/pyenv/pyenv/git/trees/master?recursive=true
         // and extracting the correct versions from https://github.com/pyenv/pyenv/tree/master/plugins/python-build/share/python-build
         // use https://api.github.com/repos/pyenv/pyenv/contents/plugins/python-build/share/python-build
-        let pyenv_version = "3.9.1";
+        let pyenv_version = String::from("3.9.13"); //pyenv::latest_with_prefix(&String::from("3.9")).await?;
         let pyenv_pre_build = indoc! {r#"
         FROM archlinux:base-devel AS python-base
         
@@ -45,12 +45,12 @@ async fn main() -> Result<(), Box<SimpleError>> {
             && find /pyenv -type f -name '*.a' -exec rm -rf '{}' +
         "#};
 
-        pre_builds.push(pyenv_pre_build.replace("PYTHON_VERSION", pyenv_version));
+        pre_builds.push(pyenv_pre_build.replace("PYTHON_VERSION", &pyenv_version));
         let pyenv_joiner = indoc! {r#"
         COPY --from=python-base /pyenv /pyenv
         ENV PATH="/pyenv/versions/PYTHON_VERSION/bin:${PATH}"
         "#};
-        joiners.push(pyenv_joiner.replace("PYTHON_VERSION", pyenv_version));
+        joiners.push(pyenv_joiner.replace("PYTHON_VERSION", &pyenv_version));
         entrypoint = format!("/pyenv/versions/{pyenv_version}/bin/python");
     }
 
