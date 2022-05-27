@@ -28,7 +28,7 @@ jobs:
           context: context
           file: tags/Dockerfile.${{ matrix.tag }}
           tags: bneijt/archmatrix:${{ matrix.tag }}     
-      - name: scan
-        uses: anchore/scan-action@v3
-        with:
-          image: bneijt/archmatrix:${{ matrix.tag }}
+      # - name: scan
+      #   uses: anchore/scan-action@v3
+      #   with:
+      #     image: bneijt/archmatrix:${{ matrix.tag }}
