@@ -7,5 +7,7 @@ cargo run -- --include Pyenv39 --include Stripped
 
 # Build all tags
 for dockerfile in tags/Dockerfile.*; do
-    docker build --file $dockerfile context
+    filename=$(basename -- "$dockerfile")
+    tag="${filename##*.}"
+    docker build --tag archmatrix:$tag --file $dockerfile context
 done
