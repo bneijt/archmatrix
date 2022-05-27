@@ -23,6 +23,8 @@ fn main() {
 
     if tags.contains(&String::from("Pyenv39")) {
         // TODO determine latest pyenv version online
+        // by parsing https://api.github.com/repos/pyenv/pyenv/git/trees/master?recursive=true
+        // and extracting the correct versions from https://github.com/pyenv/pyenv/tree/master/plugins/python-build/share/python-build
         let pyenv_version = "3.9.1";
         let pyenv_pre_build = indoc! {r#"
         FROM archlinux:base-devel AS python-base
