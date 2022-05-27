@@ -84,7 +84,7 @@ fn main() {
             // "gmp",
             "gnupg",
             // "gnutls",
-            // "gpgme",
+            "gpgme",
             "grep",
             // "gzip",
             // "hwdata",
@@ -134,7 +134,7 @@ fn main() {
             "linux-api-headers",
             // "lz4",
             // "mpfr",
-            "ncurses",
+            // "ncurses", // Breaks /bin/sh
             "nettle",
             // "npth",
             // "openssl",
@@ -167,7 +167,12 @@ fn main() {
             // "zstd",
         ];
         let drop_args = to_drop.join(" ");
+        joiners.push(format!("RUN rm -rf /usr/share/info"));
+        joiners.push(format!("RUN rm -rf /usr/include"));
+
+        // Will break subsequent RUN commands
         joiners.push(format!("RUN pacman --noconfirm -Rndd {drop_args}"));
+
         post_builds.push(
             indoc! {r#"
         FROM scratch
