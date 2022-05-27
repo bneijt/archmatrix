@@ -8,24 +8,27 @@ on:
     branches: [main]
 
 jobs:
-  publish:
+  main:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        tag:
+          - Pyenv39
+          - Pyenv39Stripped
     steps:
       - uses: actions/checkout@v2
-      - uses: docker/login-action@v2
+      - uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      - name: build
-        run: |
-          for dockerfile in tags/Dockerfile.*; do
-            filename=$(basename -- "$dockerfile")
-            tag="${filename##*.}"
-            docker build --tag bneijt/archmatrix:$tag --file $dockerfile context
-          done
+      - name: Build and push
+        uses: docker/build-push-action@v3
+        with:
+          push: false
+          context: context
+          file: tags/Dockerfile.${{ matrix.tag }}
+          tags: bneijt/archmatrix:${{ matrix.tag }}     
       - name: scan
         uses: anchore/scan-action@v3
         with:
-          image: bneijt/*
-      - name: push
-        run: echo NOP
+          image: bneijt/archmatrix:${{ matrix.tag }}
