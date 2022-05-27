@@ -27,7 +27,7 @@ async fn main() -> Result<(), Box<SimpleError>> {
         // by parsing https://api.github.com/repos/pyenv/pyenv/git/trees/master?recursive=true
         // and extracting the correct versions from https://github.com/pyenv/pyenv/tree/master/plugins/python-build/share/python-build
         // use https://api.github.com/repos/pyenv/pyenv/contents/plugins/python-build/share/python-build
-        let pyenv_version = String::from("3.9.13"); //pyenv::latest_with_prefix(&String::from("3.9")).await?;
+        let pyenv_version = String::from("3.9.12"); //pyenv::latest_with_prefix(&String::from("3.9")).await?;
         let pyenv_pre_build = indoc! {r#"
         FROM archlinux:base-devel AS python-base
         
