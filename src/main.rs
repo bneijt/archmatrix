@@ -1,9 +1,9 @@
 use indoc::indoc;
 use std::fs;
 mod pyenv;
-use simple_error::SimpleError;
 use clap::Parser;
-
+use simple_error::SimpleError;
+//https://gitlab.com/gitlab-org/cloud-deploy/-/blob/master/aws/base/Dockerfile
 /// Simple program to greet a person
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -53,7 +53,28 @@ async fn main() -> Result<(), Box<SimpleError>> {
         joiners.push(pyenv_joiner.replace("PYTHON_VERSION", &pyenv_version));
         entrypoint = format!("/pyenv/versions/{pyenv_version}/bin/python");
     }
+    if tags.contains(&String::from("Tf12")) {
+        let tf_version = "1.2.1";
+        let terraform_pre_build = indoc! {r#"
+        FROM archlinux:base-devel AS tf1-base
+        
+        RUN pacman --noconfirm -Sy; \
+            pacman --noconfirm -S archlinux-keyring; \
+            pacman --noconfirm -S unzip
 
+        RUN curl -sLo terraform.zip "https://releases.hashicorp.com/terraform/TERRAFORM_VERSION/terraform_TERRAFORM_VERSION_linux_amd64.zip" \
+            && unzip terraform.zip \
+            && rm terraform.zip \
+            && mv ./terraform /usr/local/bin/terraform-TERRAFORM_VERSION \
+            && ln -s /usr/local/bin/terraform-TERRAFORM_VERSION /usr/local/bin/terraform \
+            && terraform --version
+        "#};
+        let tf_joiner = indoc! {r#"
+        COPY --from=tf1-base /usr/local/bin/terraform* /usr/local/bin/
+        "#};
+        pre_builds.push(terraform_pre_build.replace("TERRAFORM_VERSION", &tf_version));
+        joiners.push(tf_joiner.to_string());
+    }
     if args.include.contains(&String::from("Stripped")) {
         // Check sizes by installing expac and running expac "%n %m" -l'\n' -Q $(pacman -Qq) | sort -rhk 2
         let to_drop = vec![
@@ -88,7 +109,7 @@ async fn main() -> Result<(), Box<SimpleError>> {
             // "gmp",
             "gnupg",
             // "gnutls",
-            "gpgme",
+            // "gpgme",
             "grep",
             // "gzip",
             // "hwdata",
@@ -173,6 +194,7 @@ async fn main() -> Result<(), Box<SimpleError>> {
         let drop_args = to_drop.join(" ");
         joiners.push(format!("RUN rm -rf /usr/share/info"));
         joiners.push(format!("RUN rm -rf /usr/include"));
+        joiners.push(format!("RUN rm -rf /usr/lib/*.a"));
 
         // Will break subsequent RUN commands
         joiners.push(format!("RUN pacman --noconfirm -Rndd {drop_args}"));
