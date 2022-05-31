@@ -31,24 +31,22 @@ pub async fn load_latest_with_prefix(prefix: &String) -> Result<String, Box<Simp
         .repos("pyenv", "pyenv")
         .get_content()
         .path("plugins/python-build/share/python-build")
-        .r#ref("master")
+        .r#ref("v2.3.0")
         .send()
         .await
         .map_err(|_| Box::new(SimpleError::new(format!("Failed to contact github"))))?;
-    let mut versions: Vec<Vec<String>> = content_items
+    let mut versions: Vec<String> = content_items
         .items
         .iter()
         .map(|content| content.name.clone())
         .filter(|version| version.starts_with(prefix))
         .filter(|version| !version.contains('-'))
-        .map(|version| version.split('.').map(String::from).collect())
         .collect();
+
     // println!("{:?}", content_items.items);
-    println!("{:?}", versions);
+    // println!("{:?}", versions);
     versions.sort(); //|a, b| a.split(".").map(|z|z.parse::<i32>().unwrap()) );
-    let version: String = versions
-        .get(0)
-        .map(|version_vec| version_vec.join("."))
+    let version: String = latest_version_from(&versions)
         .ok_or_else(|| {
             Box::new(SimpleError::new(format!(
                 "Failed to find version for {prefix}"
@@ -66,7 +64,28 @@ mod tests {
     fn latest_version_from_should_know_numbers() {
         assert_eq!(
             Some(String::from("1.33.0")),
-            latest_version_from(&vec![String::from("1.30.0"), String::from("1.33.0"), String::from("1.20.0")])
+            latest_version_from(&vec![
+                String::from("1.30.0"),
+                String::from("1.33.0"),
+                String::from("1.20.0")
+            ])
+        );
+        assert_eq!(
+            Some(String::from("3.9.12")),
+            latest_version_from(&vec![
+                String::from("3.9.0"),
+                String::from("3.9.1"),
+                String::from("3.9.2"),
+                String::from("3.9.4"),
+                String::from("3.9.5"),
+                String::from("3.9.6"),
+                String::from("3.9.7"),
+                String::from("3.9.8"),
+                String::from("3.9.9"),
+                String::from("3.9.10"),
+                String::from("3.9.11"),
+                String::from("3.9.12")
+            ])
         );
     }
 }
