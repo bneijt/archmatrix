@@ -21,7 +21,6 @@ async fn main() -> Result<(), Box<SimpleError>> {
     let mut joiners: Vec<String> = Vec::new();
     let mut post_builds: Vec<String> = Vec::new();
     let mut entrypoint = String::from("/bin/bash");
-
     if tags.contains(&String::from("Pyenv39")) {
         // TODO determine latest pyenv version online
         // by parsing https://api.github.com/repos/pyenv/pyenv/git/trees/master?recursive=true
@@ -76,6 +75,13 @@ async fn main() -> Result<(), Box<SimpleError>> {
         pre_builds.push(terraform_pre_build.replace("TERRAFORM_VERSION", &tf_version));
         joiners.push(tf_joiner.to_string());
     }
+
+    if tags.contains(&String::from("A")){
+        joiners.push(String::from("RUN mkdir /app && useradd --home-dir /app --no-create-home --shell /usr/bin/nologin app"));
+        joiners.push(String::from("WORKDIR app"));
+        joiners.push(String::from("USER app"));
+    }
+
     if args.include.contains(&String::from("Stripped")) {
         // Check sizes by installing expac and running expac "%n %m" -l'\n' -Q $(pacman -Qq) | sort -rhk 2
         let to_drop = vec![

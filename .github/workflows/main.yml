@@ -16,7 +16,10 @@ jobs:
       matrix:
         tag:
           - Pyenv39
+          - Pyenv39A
           - Pyenv39Stripped
+          - Tf12
+          - Tf12A
     steps:
       - uses: actions/checkout@v2
       - uses: docker/login-action@v2
