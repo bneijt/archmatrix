@@ -1,8 +1,9 @@
 use indoc::indoc;
 use std::fs;
-
+mod pyenv;
 use clap::Parser;
-
+use simple_error::SimpleError;
+//https://gitlab.com/gitlab-org/cloud-deploy/-/blob/master/aws/base/Dockerfile
 /// Simple program to greet a person
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -11,8 +12,8 @@ struct Args {
     #[clap(short, long, multiple_values = true)]
     include: Vec<String>,
 }
-
-fn main() {
+#[tokio::main]
+async fn main() -> Result<(), Box<SimpleError>> {
     let args = Args::parse();
     let mut tags = args.include.clone();
     tags.sort();
@@ -20,10 +21,13 @@ fn main() {
     let mut joiners: Vec<String> = Vec::new();
     let mut post_builds: Vec<String> = Vec::new();
     let mut entrypoint = String::from("/bin/bash");
-
     if tags.contains(&String::from("Pyenv39")) {
         // TODO determine latest pyenv version online
-        let pyenv_version = "3.9.1";
+        // by parsing https://api.github.com/repos/pyenv/pyenv/git/trees/master?recursive=true
+        // and extracting the correct versions from https://github.com/pyenv/pyenv/tree/master/plugins/python-build/share/python-build
+        // use https://api.github.com/repos/pyenv/pyenv/contents/plugins/python-build/share/python-build
+        let pyenv_version = pyenv::load_latest_with_prefix(&String::from("3.9")).await?;
+        
         let pyenv_pre_build = indoc! {r#"
         FROM archlinux:base-devel AS python-base
         
@@ -41,13 +45,41 @@ fn main() {
             && find /pyenv -type f -name '*.a' -exec rm -rf '{}' +
         "#};
 
-        pre_builds.push(pyenv_pre_build.replace("PYTHON_VERSION", pyenv_version));
+        pre_builds.push(pyenv_pre_build.replace("PYTHON_VERSION", &pyenv_version));
         let pyenv_joiner = indoc! {r#"
         COPY --from=python-base /pyenv /pyenv
         ENV PATH="/pyenv/versions/PYTHON_VERSION/bin:${PATH}"
         "#};
-        joiners.push(pyenv_joiner.replace("PYTHON_VERSION", pyenv_version));
+        joiners.push(pyenv_joiner.replace("PYTHON_VERSION", &pyenv_version));
         entrypoint = format!("/pyenv/versions/{pyenv_version}/bin/python");
+    }
+    if tags.contains(&String::from("Tf12")) {
+        let tf_version = "1.2.1";
+        let terraform_pre_build = indoc! {r#"
+        FROM archlinux:base-devel AS tf1-base
+        
+        RUN pacman --noconfirm -Sy; \
+            pacman --noconfirm -S archlinux-keyring; \
+            pacman --noconfirm -S unzip
+
+        RUN curl -sLo terraform.zip "https://releases.hashicorp.com/terraform/TERRAFORM_VERSION/terraform_TERRAFORM_VERSION_linux_amd64.zip" \
+            && unzip terraform.zip \
+            && rm terraform.zip \
+            && mv ./terraform /usr/local/bin/terraform-TERRAFORM_VERSION \
+            && ln -s /usr/local/bin/terraform-TERRAFORM_VERSION /usr/local/bin/terraform \
+            && terraform --version
+        "#};
+        let tf_joiner = indoc! {r#"
+        COPY --from=tf1-base /usr/local/bin/terraform* /usr/local/bin/
+        "#};
+        pre_builds.push(terraform_pre_build.replace("TERRAFORM_VERSION", &tf_version));
+        joiners.push(tf_joiner.to_string());
+    }
+
+    if tags.contains(&String::from("A")){
+        joiners.push(String::from("RUN mkdir /app && useradd --home-dir /app --no-create-home --shell /usr/bin/nologin app"));
+        joiners.push(String::from("WORKDIR app"));
+        joiners.push(String::from("USER app"));
     }
 
     if args.include.contains(&String::from("Stripped")) {
@@ -84,7 +116,7 @@ fn main() {
             // "gmp",
             "gnupg",
             // "gnutls",
-            "gpgme",
+            // "gpgme",
             "grep",
             // "gzip",
             // "hwdata",
@@ -169,6 +201,7 @@ fn main() {
         let drop_args = to_drop.join(" ");
         joiners.push(format!("RUN rm -rf /usr/share/info"));
         joiners.push(format!("RUN rm -rf /usr/include"));
+        joiners.push(format!("RUN rm -rf /usr/lib/*.a"));
 
         // Will break subsequent RUN commands
         joiners.push(format!("RUN pacman --noconfirm -Rndd {drop_args}"));
@@ -209,4 +242,5 @@ fn main() {
     let tag = args.include.join("");
     let docker_filename = format!("tags/Dockerfile.{tag}");
     fs::write(docker_filename, dockerfile_body).expect("Failed to write docker file");
+    Ok(())
 }

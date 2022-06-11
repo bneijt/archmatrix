@@ -6,8 +6,8 @@ RUN pacman --noconfirm -Sy; \
 
 ENV PYENV_ROOT=/pyenv
 
-RUN pyenv install "3.9.1" \
-    && pyenv global "3.9.1"
+RUN pyenv install "3.9.12" \
+    && pyenv global "3.9.12"
 
 # Drop cache and linking files
 RUN find /pyenv -type d -a \( -name __pycache__ -o -name test -o -name tests -o -name idle_test \) -exec rm -rf '{}' + \
@@ -15,6 +15,6 @@ RUN find /pyenv -type d -a \( -name __pycache__ -o -name test -o -name tests -o 
 
 FROM archlinux:base AS joiner
 COPY --from=python-base /pyenv /pyenv
-ENV PATH="/pyenv/versions/3.9.1/bin:${PATH}"
+ENV PATH="/pyenv/versions/3.9.12/bin:${PATH}"
 
-ENTRYPOINT ["/pyenv/versions/3.9.1/bin/python"]
+ENTRYPOINT ["/pyenv/versions/3.9.12/bin/python"]

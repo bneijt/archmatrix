@@ -17,12 +17,7 @@ FROM archlinux:base AS joiner
 COPY --from=python-base /pyenv /pyenv
 ENV PATH="/pyenv/versions/3.9.12/bin:${PATH}"
 
-RUN rm -rf /usr/share/info
-RUN rm -rf /usr/include
-RUN rm -rf /usr/lib/*.a
-RUN pacman --noconfirm -Rndd acl archlinux-keyring argon2 bash coreutils cryptsetup curl e2fsprogs file findutils gawk gnupg grep iproute2 iptables iputils keyutils krb5 less libxml2 licenses linux-api-headers nettle p11-kit pacman-mirrorlist pam pambase pciutils pinentry popt procps-ng sed shadow sqlite systemd systemd-libs systemd-sysvcompat tar tpm2-tss util-linux util-linux-libs xz
-ENTRYPOINT ["/pyenv/versions/3.9.12/bin/python"]
-FROM scratch
-COPY --from=joiner / /
-
+RUN mkdir /app && useradd --home-dir /app --no-create-home --shell /usr/bin/nologin app
+WORKDIR app
+USER app
 ENTRYPOINT ["/pyenv/versions/3.9.12/bin/python"]
