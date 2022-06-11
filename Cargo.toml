@@ -10,4 +10,5 @@ clap = { version = "3.1.18", features = ["derive"] }
 indoc = "1.0.6"
 octocrab = "0.16.0"
 simple-error = "0.2.3"
+strum = { version = "0.24", features = ["derive"] }
 tokio = { version = "1.18.2", features = ["full"] }
