@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
-mkdir -p tags
+rm -rf tags
+mkdir tags
 
 # The matrix
 cargo run -- --include Pyenv39
