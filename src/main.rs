@@ -12,6 +12,7 @@ enum MatrixFeature {
     Tf12,
     A,
     Stripped,
+    Aws,
 }
 
 impl fmt::Display for MatrixFeature {
@@ -38,6 +39,13 @@ async fn main() -> Result<(), Box<SimpleError>> {
     let mut joiners: Vec<String> = Vec::new();
     let mut post_builds: Vec<String> = Vec::new();
     let mut entrypoint = String::from("/bin/bash");
+    if tags.contains(&MatrixFeature::Aws) {
+        joiners.push( indoc! {r#"
+        RUN pacman --noconfirm -Sy archlinux-keyring \
+            && pacman --noconfirm -S aws-cli \
+            && pacman --noconfirm -Scc
+        "#}.to_string());
+    }
     if tags.contains(&MatrixFeature::Pyenv39) {
         // TODO determine latest pyenv version online
         // by parsing https://api.github.com/repos/pyenv/pyenv/git/trees/master?recursive=true
@@ -47,9 +55,10 @@ async fn main() -> Result<(), Box<SimpleError>> {
         let pyenv_pre_build = indoc! {r#"
         FROM archlinux:base-devel AS python-base
         
-        RUN pacman --noconfirm -Sy; \
-            pacman --noconfirm -S archlinux-keyring; \
-            pacman --noconfirm -S pyenv
+        RUN pacman --noconfirm -Sy \
+            && pacman --noconfirm -S archlinux-keyring \
+            && pacman --noconfirm -S pyenv \
+            && pacman --noconfirm -Scc
         
         ENV PYENV_ROOT=/pyenv
         
@@ -74,9 +83,9 @@ async fn main() -> Result<(), Box<SimpleError>> {
         let terraform_pre_build = indoc! {r#"
         FROM archlinux:base-devel AS tf1-base
         
-        RUN pacman --noconfirm -Sy; \
-            pacman --noconfirm -S archlinux-keyring; \
-            pacman --noconfirm -S unzip
+        RUN pacman --noconfirm -Sy archlinux-keyring \
+            && pacman --noconfirm -S unzip \
+            && pacman --noconfirm -Scc
 
         RUN curl -sLo terraform.zip "https://releases.hashicorp.com/terraform/TERRAFORM_VERSION/terraform_TERRAFORM_VERSION_linux_amd64.zip" \
             && unzip terraform.zip \
@@ -255,7 +264,11 @@ async fn main() -> Result<(), Box<SimpleError>> {
         dockerfile_body.push_str(&format!("ENTRYPOINT [\"{entrypoint}\"]"));
         dockerfile_body.push('\n');
     }
-    let tag = args.include.iter().map(|x| x.to_string()).collect::<String>();
+    let tag = args
+        .include
+        .iter()
+        .map(|x| x.to_string())
+        .collect::<String>();
     let docker_filename = format!("tags/Dockerfile.{tag}");
     fs::write(docker_filename, dockerfile_body).expect("Failed to write docker file");
     Ok(())

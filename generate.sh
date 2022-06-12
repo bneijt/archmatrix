@@ -7,7 +7,8 @@ mkdir tags
 cargo run -- --include Pyenv39
 cargo run -- --include Pyenv39 --include Stripped
 cargo run -- --include Tf12
-cargo run -- --include Tf12 --include A
+cargo run -- --include Aws
+cargo run -- --include Tf12 --include Aws
 cargo run -- --include Pyenv39 --include A
 
 # Build all tags
