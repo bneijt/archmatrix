@@ -3,15 +3,32 @@ use std::fs;
 mod pyenv;
 use clap::Parser;
 use simple_error::SimpleError;
+use std::fmt;
+use strum::EnumString;
+
+#[derive(Debug, EnumString, Clone, PartialEq, Eq, PartialOrd, Ord)]
+enum MatrixFeature {
+    Pyenv39,
+    Tf12,
+    A,
+    Stripped,
+}
+
+impl fmt::Display for MatrixFeature {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 //https://gitlab.com/gitlab-org/cloud-deploy/-/blob/master/aws/base/Dockerfile
-/// Simple program to greet a person
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
     /// Tag to produce
     #[clap(short, long, multiple_values = true)]
-    include: Vec<String>,
+    include: Vec<MatrixFeature>,
 }
+
 #[tokio::main]
 async fn main() -> Result<(), Box<SimpleError>> {
     let args = Args::parse();
@@ -21,13 +38,12 @@ async fn main() -> Result<(), Box<SimpleError>> {
     let mut joiners: Vec<String> = Vec::new();
     let mut post_builds: Vec<String> = Vec::new();
     let mut entrypoint = String::from("/bin/bash");
-    if tags.contains(&String::from("Pyenv39")) {
+    if tags.contains(&MatrixFeature::Pyenv39) {
         // TODO determine latest pyenv version online
         // by parsing https://api.github.com/repos/pyenv/pyenv/git/trees/master?recursive=true
         // and extracting the correct versions from https://github.com/pyenv/pyenv/tree/master/plugins/python-build/share/python-build
         // use https://api.github.com/repos/pyenv/pyenv/contents/plugins/python-build/share/python-build
         let pyenv_version = pyenv::load_latest_with_prefix(&String::from("3.9")).await?;
-        
         let pyenv_pre_build = indoc! {r#"
         FROM archlinux:base-devel AS python-base
         
@@ -53,7 +69,7 @@ async fn main() -> Result<(), Box<SimpleError>> {
         joiners.push(pyenv_joiner.replace("PYTHON_VERSION", &pyenv_version));
         entrypoint = format!("/pyenv/versions/{pyenv_version}/bin/python");
     }
-    if tags.contains(&String::from("Tf12")) {
+    if tags.contains(&MatrixFeature::Tf12) {
         let tf_version = "1.2.1";
         let terraform_pre_build = indoc! {r#"
         FROM archlinux:base-devel AS tf1-base
@@ -76,13 +92,13 @@ async fn main() -> Result<(), Box<SimpleError>> {
         joiners.push(tf_joiner.to_string());
     }
 
-    if tags.contains(&String::from("A")){
+    if tags.contains(&MatrixFeature::A) {
         joiners.push(String::from("RUN mkdir /app && useradd --home-dir /app --no-create-home --shell /usr/bin/nologin app"));
         joiners.push(String::from("WORKDIR app"));
         joiners.push(String::from("USER app"));
     }
 
-    if args.include.contains(&String::from("Stripped")) {
+    if args.include.contains(&MatrixFeature::Stripped) {
         // Check sizes by installing expac and running expac "%n %m" -l'\n' -Q $(pacman -Qq) | sort -rhk 2
         let to_drop = vec![
             "acl",
@@ -239,7 +255,7 @@ async fn main() -> Result<(), Box<SimpleError>> {
         dockerfile_body.push_str(&format!("ENTRYPOINT [\"{entrypoint}\"]"));
         dockerfile_body.push('\n');
     }
-    let tag = args.include.join("");
+    let tag = args.include.iter().map(|x| x.to_string()).collect::<String>();
     let docker_filename = format!("tags/Dockerfile.{tag}");
     fs::write(docker_filename, dockerfile_body).expect("Failed to write docker file");
     Ok(())
