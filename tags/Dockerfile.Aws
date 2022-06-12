@@ -1,0 +1,6 @@
+FROM archlinux:base AS joiner
+RUN pacman --noconfirm -Sy archlinux-keyring \
+    && pacman --noconfirm -S aws-cli \
+    && pacman --noconfirm -Scc
+
+ENTRYPOINT ["/bin/bash"]
