@@ -24,6 +24,8 @@ jobs:
     steps:
       - uses: josStorer/get-current-time@v2
         id: current-time
+        with:
+          format: WW
       - uses: actions/checkout@v2
       - uses: docker/login-action@v2
         with:
@@ -37,4 +39,4 @@ jobs:
           file: tags/Dockerfile.${{ matrix.tag }}
           tags: |
             bneijt/archmatrix:${{ matrix.tag }}
-            bneijt/archmatrix:${{ matrix.tag }}_${{ steps.current-time.outputs.month }}
+            bneijt/archmatrix:${{ steps.current-time.outputs.formattedTime }}${{ matrix.tag }}
