@@ -19,6 +19,9 @@ jobs:
           - Pyenv39
           - Pyenv39A
           - Pyenv39Stripped
+          - Pyenv310
+          - Pyenv310A
+          - Pyenv310Stripped
           - Tf12
           - Tf12Aws
     steps:
