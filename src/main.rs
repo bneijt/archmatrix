@@ -9,6 +9,7 @@ use strum::EnumString;
 #[derive(Debug, EnumString, Clone, PartialEq, Eq, PartialOrd, Ord)]
 enum MatrixFeature {
     Pyenv39,
+    Pyenv310,
     Tf12,
     A,
     Stripped,
@@ -52,6 +53,34 @@ async fn main() -> Result<(), Box<SimpleError>> {
         // and extracting the correct versions from https://github.com/pyenv/pyenv/tree/master/plugins/python-build/share/python-build
         // use https://api.github.com/repos/pyenv/pyenv/contents/plugins/python-build/share/python-build
         let pyenv_version = pyenv::load_latest_with_prefix(&String::from("3.9")).await?;
+        let pyenv_pre_build = indoc! {r#"
+        FROM archlinux:base-devel AS python-base
+        
+        RUN pacman --noconfirm -Sy \
+            && pacman --noconfirm -S archlinux-keyring \
+            && pacman --noconfirm -S pyenv \
+            && pacman --noconfirm -Scc
+        
+        ENV PYENV_ROOT=/pyenv
+        
+        RUN pyenv install "PYTHON_VERSION" \
+            && pyenv global "PYTHON_VERSION"
+        
+        # Drop cache and linking files
+        RUN find /pyenv -type d -a \( -name __pycache__ -o -name test -o -name tests -o -name idle_test \) -exec rm -rf '{}' + \
+            && find /pyenv -type f -name '*.a' -exec rm -rf '{}' +
+        "#};
+
+        pre_builds.push(pyenv_pre_build.replace("PYTHON_VERSION", &pyenv_version));
+        let pyenv_joiner = indoc! {r#"
+        COPY --from=python-base /pyenv /pyenv
+        ENV PATH="/pyenv/versions/PYTHON_VERSION/bin:${PATH}"
+        "#};
+        joiners.push(pyenv_joiner.replace("PYTHON_VERSION", &pyenv_version));
+        entrypoint = format!("/pyenv/versions/{pyenv_version}/bin/python");
+    }
+    if tags.contains(&MatrixFeature::Pyenv310) {
+        let pyenv_version = pyenv::load_latest_with_prefix(&String::from("3.10")).await?;
         let pyenv_pre_build = indoc! {r#"
         FROM archlinux:base-devel AS python-base
         
